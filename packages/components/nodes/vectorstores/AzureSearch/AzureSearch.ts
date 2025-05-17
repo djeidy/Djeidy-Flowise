@@ -156,7 +156,7 @@ class AzureSearch_VectorStores implements INode {
 
             try {
                 if (recordManager) {
-                    const vectorStore = await AzureAISearchVectorStore.fromExistingIndex(embeddings, config)
+                    const vectorStore = new AzureAISearchVectorStore(embeddings, config)
                     await recordManager.createSchema()
                     const res = await index({
                         docsSource: finalDocs,
@@ -230,7 +230,7 @@ class AzureSearch_VectorStores implements INode {
             searchType
         }
 
-        const vectorStore = await AzureAISearchVectorStore.fromExistingIndex(embeddings, config)
+        const vectorStore = new AzureAISearchVectorStore(embeddings, config)
 
         return resolveVectorStoreOrRetriever(nodeData, vectorStore)
     }
