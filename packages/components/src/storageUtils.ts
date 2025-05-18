@@ -77,11 +77,31 @@ export const addBase64FilesToStorage = async (fileBase64: string, chatflowid: st
 export const addArrayFilesToStorage = async (mime: string, bf: Buffer, fileName: string, fileNames: string[], ...paths: string[]) => {
     const storageType = getStorageType()
 
-    const sanitizedFilename = _sanitizeFilename(fileName)
+    // Check if the fileName contains a relative path (for folder uploads)
+    const hasRelativePath = fileName.includes('/') || fileName.includes('\\')
+    let relativePath = ''
+    let actualFileName = fileName
+
+    if (hasRelativePath) {
+        // Extract the relative path and the actual filename
+        const normalizedPath = fileName.replace(/\\/g, '/')
+        const lastSlashIndex = normalizedPath.lastIndexOf('/')
+        relativePath = normalizedPath.substring(0, lastSlashIndex)
+        actualFileName = normalizedPath.substring(lastSlashIndex + 1)
+    }
+
+    const sanitizedFilename = _sanitizeFilename(actualFileName)
+
     if (storageType === 's3') {
         const { s3Client, Bucket } = getS3Config()
 
-        let Key = paths.reduce((acc, cur) => acc + '/' + cur, '') + '/' + sanitizedFilename
+        // Include the relative path in the key if it exists
+        let Key = paths.reduce((acc, cur) => acc + '/' + cur, '')
+        if (relativePath) {
+            Key += '/' + relativePath
+        }
+        Key += '/' + sanitizedFilename
+
         if (Key.startsWith('/')) {
             Key = Key.substring(1)
         }
@@ -94,13 +114,24 @@ export const addArrayFilesToStorage = async (mime: string, bf: Buffer, fileName:
             Body: bf
         })
         await s3Client.send(putObjCmd)
-        fileNames.push(sanitizedFilename)
+
+        // Store the relative path with the filename for retrieval
+        const storedFileName = relativePath ? `${relativePath}/${sanitizedFilename}` : sanitizedFilename
+        fileNames.push(storedFileName)
         return 'FILE-STORAGE::' + JSON.stringify(fileNames)
     } else if (storageType === 'gcs') {
         const { bucket } = getGcsClient()
         const normalizedPaths = paths.map((p) => p.replace(/\\/g, '/'))
         const normalizedFilename = sanitizedFilename.replace(/\\/g, '/')
-        const filePath = [...normalizedPaths, normalizedFilename].join('/')
+
+        // Include the relative path in the file path if it exists
+        let fileParts = [...normalizedPaths]
+        if (relativePath) {
+            fileParts.push(relativePath)
+        }
+        fileParts.push(normalizedFilename)
+
+        const filePath = fileParts.join('/')
         const file = bucket.file(filePath)
         await new Promise<void>((resolve, reject) => {
             file.createWriteStream()
@@ -108,16 +139,33 @@ export const addArrayFilesToStorage = async (mime: string, bf: Buffer, fileName:
                 .on('finish', () => resolve())
                 .end(bf)
         })
-        fileNames.push(sanitizedFilename)
+
+        // Store the relative path with the filename for retrieval
+        const storedFileName = relativePath ? `${relativePath}/${sanitizedFilename}` : sanitizedFilename
+        fileNames.push(storedFileName)
         return 'FILE-STORAGE::' + JSON.stringify(fileNames)
     } else {
-        const dir = path.join(getStoragePath(), ...paths.map(_sanitizeFilename))
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true })
+        // For local storage, create the directory structure including any relative path
+        let dirParts = [...paths.map(_sanitizeFilename)]
+        const baseDir = path.join(getStoragePath(), ...dirParts)
+
+        let finalDir = baseDir
+        if (relativePath) {
+            // Create the relative path directories
+            finalDir = path.join(baseDir, relativePath)
+            if (!fs.existsSync(finalDir)) {
+                fs.mkdirSync(finalDir, { recursive: true })
+            }
+        } else if (!fs.existsSync(baseDir)) {
+            fs.mkdirSync(baseDir, { recursive: true })
         }
-        const filePath = path.join(dir, sanitizedFilename)
+
+        const filePath = path.join(finalDir, sanitizedFilename)
         fs.writeFileSync(filePath, bf)
-        fileNames.push(sanitizedFilename)
+
+        // Store the relative path with the filename for retrieval
+        const storedFileName = relativePath ? `${relativePath}/${sanitizedFilename}` : sanitizedFilename
+        fileNames.push(storedFileName)
         return 'FILE-STORAGE::' + JSON.stringify(fileNames)
     }
 }
@@ -205,12 +253,32 @@ export const getFileFromUpload = async (filePath: string): Promise<Buffer> => {
 
 export const getFileFromStorage = async (file: string, ...paths: string[]): Promise<Buffer> => {
     const storageType = getStorageType()
-    const sanitizedFilename = _sanitizeFilename(file)
+
+    // Check if the file contains a relative path (for folder uploads)
+    const hasRelativePath = file.includes('/') || file.includes('\\')
+    let relativePath = ''
+    let actualFileName = file
+
+    if (hasRelativePath) {
+        // Extract the relative path and the actual filename
+        const normalizedPath = file.replace(/\\/g, '/')
+        const lastSlashIndex = normalizedPath.lastIndexOf('/')
+        relativePath = normalizedPath.substring(0, lastSlashIndex)
+        actualFileName = normalizedPath.substring(lastSlashIndex + 1)
+    }
+
+    const sanitizedFilename = _sanitizeFilename(actualFileName)
 
     if (storageType === 's3') {
         const { s3Client, Bucket } = getS3Config()
 
-        let Key = paths.reduce((acc, cur) => acc + '/' + cur, '') + '/' + sanitizedFilename
+        // Build the key including any relative path
+        let Key = paths.reduce((acc, cur) => acc + '/' + cur, '')
+        if (relativePath) {
+            Key += '/' + relativePath
+        }
+        Key += '/' + sanitizedFilename
+
         if (Key.startsWith('/')) {
             Key = Key.substring(1)
         }
@@ -234,13 +302,29 @@ export const getFileFromStorage = async (file: string, ...paths: string[]): Prom
     } else if (storageType === 'gcs') {
         const { bucket } = getGcsClient()
         const normalizedPaths = paths.map((p) => p.replace(/\\/g, '/'))
+
+        // Include the relative path in the file path if it exists
+        let fileParts = [...normalizedPaths]
+        if (relativePath) {
+            fileParts.push(relativePath)
+        }
+
         const normalizedFilename = sanitizedFilename.replace(/\\/g, '/')
-        const filePath = [...normalizedPaths, normalizedFilename].join('/')
+        fileParts.push(normalizedFilename)
+
+        const filePath = fileParts.join('/')
         const file = bucket.file(filePath)
         const [buffer] = await file.download()
         return buffer
     } else {
-        const fileInStorage = path.join(getStoragePath(), ...paths.map(_sanitizeFilename), sanitizedFilename)
+        // For local storage, include the relative path in the file path
+        let storagePath = path.join(getStoragePath(), ...paths.map(_sanitizeFilename))
+
+        if (relativePath) {
+            storagePath = path.join(storagePath, relativePath)
+        }
+
+        const fileInStorage = path.join(storagePath, sanitizedFilename)
         return fs.readFileSync(fileInStorage)
     }
 }

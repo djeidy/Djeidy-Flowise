@@ -153,14 +153,40 @@ class File_DocumentLoaders implements INode {
                     if (!file) continue
                     const fileData = await getFileFromStorage(file, chatflowid, options.chatId)
                     const blob = new Blob([fileData])
-                    fileBlobs.push({ blob, ext: file.split('.').pop() || '' })
+
+                    // Extract file extension, handling potential folder paths
+                    let ext = ''
+                    if (file.includes('/') || file.includes('\\')) {
+                        // For files in folders, get the extension from the actual filename
+                        const normalizedPath = file.replace(/\\/g, '/')
+                        const lastSlashIndex = normalizedPath.lastIndexOf('/')
+                        const actualFileName = normalizedPath.substring(lastSlashIndex + 1)
+                        ext = actualFileName.split('.').pop() || ''
+                    } else {
+                        ext = file.split('.').pop() || ''
+                    }
+
+                    fileBlobs.push({ blob, ext })
                 }
             } else {
                 for (const file of files) {
                     if (!file) continue
                     const fileData = await getFileFromStorage(file, chatflowid)
                     const blob = new Blob([fileData])
-                    fileBlobs.push({ blob, ext: file.split('.').pop() || '' })
+
+                    // Extract file extension, handling potential folder paths
+                    let ext = ''
+                    if (file.includes('/') || file.includes('\\')) {
+                        // For files in folders, get the extension from the actual filename
+                        const normalizedPath = file.replace(/\\/g, '/')
+                        const lastSlashIndex = normalizedPath.lastIndexOf('/')
+                        const actualFileName = normalizedPath.substring(lastSlashIndex + 1)
+                        ext = actualFileName.split('.').pop() || ''
+                    } else {
+                        ext = file.split('.').pop() || ''
+                    }
+
+                    fileBlobs.push({ blob, ext })
                 }
             }
         } else {

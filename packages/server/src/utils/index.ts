@@ -356,7 +356,16 @@ export const getFileName = (fileBase64: string): string => {
         const names = fileBase64.substring(14)
         if (names.includes('[') && names.includes(']')) {
             const files = JSON.parse(names)
-            return files.join(', ')
+            // Format file names, showing folder structure if present
+            const formattedNames = files.map((file: string) => {
+                // If the file has a path separator, it's in a folder
+                if (file.includes('/') || file.includes('\\')) {
+                    // Show the full path for better context
+                    return file
+                }
+                return file
+            })
+            return formattedNames.join(', ')
         } else {
             return fileBase64.substring(14)
         }

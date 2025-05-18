@@ -273,6 +273,8 @@ export interface IncomingInput {
     history?: IMessage[]
     action?: IAction
     streaming?: boolean
+    isFolder?: string
+    filePaths?: string[]
 }
 
 export interface IncomingAgentflowInput extends Omit<IncomingInput, 'question'> {
