@@ -1507,7 +1507,7 @@ const upsertDocStore = async (
         if (!entity) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
         }
-        const loaders = safeParse(entity.loaders)
+        const loaders = safeParse(entity.loaders, [], true)
         const loader = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
         if (!loader) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document loader ${docId} not found`)
@@ -1788,7 +1788,7 @@ const refreshDocStoreMiddleware = async (storeId: string, data?: IDocumentStoreR
                 throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
             }
 
-            const loaders = safeParse(entity.loaders)
+            const loaders = safeParse(entity.loaders, [], true)
             totalItems = loaders.map((ldr: IDocumentStoreLoader) => {
                 return {
                     docId: ldr.id
@@ -1897,7 +1897,7 @@ export const findDocStoreAvailableConfigs = async (storeId: string, docId: strin
         throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
     }
 
-    const loaders = safeParse(entity.loaders)
+    const loaders = safeParse(entity.loaders, [], true)
     const loader = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
     if (!loader) {
         throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document loader ${docId} not found`)

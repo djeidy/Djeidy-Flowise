@@ -14,7 +14,7 @@
 export function safeStringify(obj: any, maxDepth = 10, space = 0): string {
     // Track objects to detect circular references
     const seen = new WeakSet()
-    
+
     return JSON.stringify(
         obj,
         (key, value) => {
@@ -25,7 +25,7 @@ export function safeStringify(obj: any, maxDepth = 10, space = 0): string {
                 }
                 seen.add(value)
             }
-            
+
             // Handle depth limitation
             if (maxDepth <= 0 && typeof value === 'object' && value !== null) {
                 if (Array.isArray(value)) {
@@ -34,7 +34,7 @@ export function safeStringify(obj: any, maxDepth = 10, space = 0): string {
                     return '[Object]'
                 }
             }
-            
+
             // Recursively process objects with reduced depth
             if (typeof value === 'object' && value !== null) {
                 if (maxDepth > 0) {
@@ -52,7 +52,7 @@ export function safeStringify(obj: any, maxDepth = 10, space = 0): string {
                     )
                 }
             }
-            
+
             return value
         },
         space
@@ -63,13 +63,24 @@ export function safeStringify(obj: any, maxDepth = 10, space = 0): string {
  * Safely parse a JSON string with error handling
  * @param str The string to parse
  * @param defaultValue Default value to return if parsing fails
+ * @param ensureArray If true, ensures the result is an array
  * @returns Parsed object or default value
  */
-export function safeParse(str: string, defaultValue: any = {}): any {
+export function safeParse(str: string, defaultValue: any = {}, ensureArray: boolean = false): any {
+    if (!str) return defaultValue;
+
     try {
-        return JSON.parse(str)
+        const parsed = JSON.parse(str);
+
+        // If ensureArray is true and the result is not an array, return an empty array
+        if (ensureArray && !Array.isArray(parsed)) {
+            console.warn('Expected array but got:', typeof parsed);
+            return Array.isArray(defaultValue) ? defaultValue : [];
+        }
+
+        return parsed;
     } catch (e) {
-        console.error('Error parsing JSON:', e)
-        return defaultValue
+        console.error('Error parsing JSON:', e);
+        return defaultValue;
     }
 }

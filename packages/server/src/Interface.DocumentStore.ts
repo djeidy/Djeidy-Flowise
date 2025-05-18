@@ -266,15 +266,28 @@ export class DocumentStoreDTO {
         }
 
         if (entity.loaders) {
-            documentStoreDTO.loaders = JSON.parse(entity.loaders)
-            documentStoreDTO.loaders.map((loader) => {
-                documentStoreDTO.totalChars += loader.totalChars || 0
-                documentStoreDTO.totalChunks += loader.totalChunks || 0
-                loader.source = addLoaderSource(loader)
-                if (loader.status !== 'SYNC') {
-                    documentStoreDTO.status = DocumentStoreStatus.STALE
+            try {
+                const parsedLoaders = JSON.parse(entity.loaders)
+                // Ensure loaders is an array before using map
+                documentStoreDTO.loaders = Array.isArray(parsedLoaders) ? parsedLoaders : []
+
+                if (Array.isArray(documentStoreDTO.loaders)) {
+                    documentStoreDTO.loaders.map((loader) => {
+                        documentStoreDTO.totalChars += loader.totalChars || 0
+                        documentStoreDTO.totalChunks += loader.totalChunks || 0
+                        loader.source = addLoaderSource(loader)
+                        if (loader.status !== 'SYNC') {
+                            documentStoreDTO.status = DocumentStoreStatus.STALE
+                        }
+                    })
                 }
-            })
+            } catch (error) {
+                // Handle JSON parse error
+                console.error('Error parsing loaders JSON:', error)
+                documentStoreDTO.loaders = []
+            }
+        } else {
+            documentStoreDTO.loaders = []
         }
 
         return documentStoreDTO
