@@ -271,11 +271,20 @@ export class DocumentStoreDTO {
                 // Ensure loaders is an array before using map
                 documentStoreDTO.loaders = Array.isArray(parsedLoaders) ? parsedLoaders : []
 
-                if (Array.isArray(documentStoreDTO.loaders)) {
-                    documentStoreDTO.loaders.map((loader) => {
+                if (documentStoreDTO.loaders.length > 0) {
+                    documentStoreDTO.loaders.forEach((loader) => {
+                        if (!loader) return; // Skip null or undefined loaders
+
                         documentStoreDTO.totalChars += loader.totalChars || 0
                         documentStoreDTO.totalChunks += loader.totalChunks || 0
-                        loader.source = addLoaderSource(loader)
+
+                        try {
+                            loader.source = addLoaderSource(loader)
+                        } catch (e) {
+                            console.error('Error adding loader source:', e)
+                            loader.source = 'Error'
+                        }
+
                         if (loader.status !== 'SYNC') {
                             documentStoreDTO.status = DocumentStoreStatus.STALE
                         }

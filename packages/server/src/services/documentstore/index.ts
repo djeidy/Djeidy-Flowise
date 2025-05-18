@@ -204,7 +204,12 @@ const getDocumentStoreFileChunks = async (appDataSource: DataSource, storeId: st
                 `Error: documentStoreServices.getDocumentStoreById - Document store ${storeId} not found`
             )
         }
-        const loaders = JSON.parse(entity.loaders)
+        let loaders = JSON.parse(entity.loaders)
+        // Ensure loaders is an array
+        if (!Array.isArray(loaders)) {
+            console.warn('loaders is not an array, initializing as empty array')
+            loaders = []
+        }
 
         let found: IDocumentStoreLoader | undefined
         if (docId !== 'all') {
@@ -316,7 +321,12 @@ const deleteDocumentStoreFileChunk = async (storeId: string, docId: string, chun
         if (!entity) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
         }
-        const loaders = JSON.parse(entity.loaders)
+        let loaders = JSON.parse(entity.loaders)
+        // Ensure loaders is an array
+        if (!Array.isArray(loaders)) {
+            console.warn('loaders is not an array, initializing as empty array')
+            loaders = []
+        }
         const found = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
         if (!found) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store loader ${docId} not found`)
@@ -430,7 +440,12 @@ const editDocumentStoreFileChunk = async (storeId: string, docId: string, chunkI
         if (!entity) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
         }
-        const loaders = JSON.parse(entity.loaders)
+        let loaders = JSON.parse(entity.loaders)
+        // Ensure loaders is an array
+        if (!Array.isArray(loaders)) {
+            console.warn('loaders is not an array, initializing as empty array')
+            loaders = []
+        }
         const found = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
         if (!found) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store loader ${docId} not found`)
@@ -658,7 +673,12 @@ const saveProcessingLoader = async (appDataSource: DataSource, data: IDocumentSt
                 `Error: documentStoreServices.saveProcessingLoader - Document store ${data.storeId} not found`
             )
         }
-        const existingLoaders = JSON.parse(entity.loaders)
+        let existingLoaders = JSON.parse(entity.loaders)
+        // Ensure existingLoaders is an array
+        if (!Array.isArray(existingLoaders)) {
+            console.warn('existingLoaders is not an array, initializing as empty array')
+            existingLoaders = []
+        }
         const newDocLoaderId = data.id ?? uuidv4()
         const found = existingLoaders.find((ldr: IDocumentStoreLoader) => ldr.id === newDocLoaderId)
         if (found) {
@@ -712,7 +732,12 @@ const saveProcessingLoader = async (appDataSource: DataSource, data: IDocumentSt
             entity.loaders = JSON.stringify(existingLoaders)
         }
         await appDataSource.getRepository(DocumentStore).save(entity)
-        const newLoaders = JSON.parse(entity.loaders)
+        let newLoaders = JSON.parse(entity.loaders)
+        // Ensure newLoaders is an array
+        if (!Array.isArray(newLoaders)) {
+            console.warn('newLoaders is not an array, initializing as empty array')
+            newLoaders = []
+        }
         const newLoader = newLoaders.find((ldr: IDocumentStoreLoader) => ldr.id === newDocLoaderId)
         if (!newLoader) {
             throw new Error(`Loader ${newDocLoaderId} not found`)
@@ -808,7 +833,12 @@ const _saveChunksToStorage = async (
         })
 
         //step 3: remove all files associated with the loader
-        const existingLoaders = JSON.parse(entity.loaders)
+        let existingLoaders = JSON.parse(entity.loaders)
+        // Ensure existingLoaders is an array
+        if (!Array.isArray(existingLoaders)) {
+            console.warn('existingLoaders is not an array, initializing as empty array')
+            existingLoaders = []
+        }
         const loader = existingLoaders.find((ldr: IDocumentStoreLoader) => ldr.id === newLoaderId)
         if (data.id) {
             const index = existingLoaders.indexOf(loader)
