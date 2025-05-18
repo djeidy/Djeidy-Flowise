@@ -14,6 +14,7 @@ import {
     removeSpecificFileFromStorage,
     removeSpecificFileFromUpload
 } from 'flowise-components'
+import { safeStringify, safeParse } from '../../utils/safeStringify'
 import {
     addLoaderSource,
     ChatType,
@@ -127,7 +128,7 @@ const deleteLoaderFromDocumentStore = async (storeId: string, docId: string) => 
             // remove the chunks
             await appServer.AppDataSource.getRepository(DocumentStoreFileChunk).delete({ docId: found.id })
 
-            entity.loaders = JSON.stringify(existingLoaders)
+            entity.loaders = safeStringify(existingLoaders)
             const results = await appServer.AppDataSource.getRepository(DocumentStore).save(entity)
             return results
         } else {
@@ -330,7 +331,7 @@ const deleteDocumentStoreFileChunk = async (storeId: string, docId: string, chun
         await appServer.AppDataSource.getRepository(DocumentStoreFileChunk).delete(chunkId)
         found.totalChunks--
         found.totalChars -= tbdChunk.pageContent.length
-        entity.loaders = JSON.stringify(loaders)
+        entity.loaders = safeStringify(loaders)
         await appServer.AppDataSource.getRepository(DocumentStore).save(entity)
         return getDocumentStoreFileChunks(appServer.AppDataSource, storeId, docId)
     } catch (error) {
@@ -443,10 +444,10 @@ const editDocumentStoreFileChunk = async (storeId: string, docId: string, chunkI
         }
         found.totalChars -= editChunk.pageContent.length
         editChunk.pageContent = content
-        editChunk.metadata = JSON.stringify(metadata)
+        editChunk.metadata = safeStringify(metadata)
         found.totalChars += content.length
         await appServer.AppDataSource.getRepository(DocumentStoreFileChunk).save(editChunk)
-        entity.loaders = JSON.stringify(loaders)
+        entity.loaders = safeStringify(loaders)
         await appServer.AppDataSource.getRepository(DocumentStore).save(entity)
         return getDocumentStoreFileChunks(appServer.AppDataSource, storeId, docId)
     } catch (error) {
@@ -888,7 +889,7 @@ const _saveChunksToStorage = async (
                     id: uuidv4(),
                     chunkNo: index + 1,
                     pageContent: chunk.pageContent,
-                    metadata: JSON.stringify(chunk.metadata)
+                    metadata: safeStringify(chunk.metadata)
                 }
                 const dChunk = appDataSource.getRepository(DocumentStoreFileChunk).create(docChunk)
                 await appDataSource.getRepository(DocumentStoreFileChunk).save(dChunk)
@@ -901,7 +902,7 @@ const _saveChunksToStorage = async (
         // have a flag and iterate over the loaders and update the entity status to SYNC
         const allSynced = existingLoaders.every((ldr: IDocumentStoreLoader) => ldr.status === 'SYNC')
         entity.status = allSynced ? DocumentStoreStatus.SYNC : DocumentStoreStatus.STALE
-        entity.loaders = JSON.stringify(existingLoaders)
+        entity.loaders = safeStringify(existingLoaders)
 
         //step 9: update the entity in the database
         await appDataSource.getRepository(DocumentStore).save(entity)
@@ -1013,39 +1014,39 @@ const saveVectorStoreConfig = async (appDataSource: DataSource, data: ICommonObj
         }
 
         if (data.embeddingName) {
-            entity.embeddingConfig = JSON.stringify({
+            entity.embeddingConfig = safeStringify({
                 config: data.embeddingConfig,
                 name: data.embeddingName
             })
         } else if (entity.embeddingConfig && !data.embeddingName && !data.embeddingConfig) {
-            data.embeddingConfig = JSON.parse(entity.embeddingConfig)?.config
-            data.embeddingName = JSON.parse(entity.embeddingConfig)?.name
+            data.embeddingConfig = safeParse(entity.embeddingConfig)?.config
+            data.embeddingName = safeParse(entity.embeddingConfig)?.name
             if (isStrictSave) entity.embeddingConfig = null
         } else if (!data.embeddingName && !data.embeddingConfig) {
             entity.embeddingConfig = null
         }
 
         if (data.vectorStoreName) {
-            entity.vectorStoreConfig = JSON.stringify({
+            entity.vectorStoreConfig = safeStringify({
                 config: data.vectorStoreConfig,
                 name: data.vectorStoreName
             })
         } else if (entity.vectorStoreConfig && !data.vectorStoreName && !data.vectorStoreConfig) {
-            data.vectorStoreConfig = JSON.parse(entity.vectorStoreConfig)?.config
-            data.vectorStoreName = JSON.parse(entity.vectorStoreConfig)?.name
+            data.vectorStoreConfig = safeParse(entity.vectorStoreConfig)?.config
+            data.vectorStoreName = safeParse(entity.vectorStoreConfig)?.name
             if (isStrictSave) entity.vectorStoreConfig = null
         } else if (!data.vectorStoreName && !data.vectorStoreConfig) {
             entity.vectorStoreConfig = null
         }
 
         if (data.recordManagerName) {
-            entity.recordManagerConfig = JSON.stringify({
+            entity.recordManagerConfig = safeStringify({
                 config: data.recordManagerConfig,
                 name: data.recordManagerName
             })
         } else if (entity.recordManagerConfig && !data.recordManagerName && !data.recordManagerConfig) {
-            data.recordManagerConfig = JSON.parse(entity.recordManagerConfig)?.config
-            data.recordManagerName = JSON.parse(entity.recordManagerConfig)?.name
+            data.recordManagerConfig = safeParse(entity.recordManagerConfig)?.config
+            data.recordManagerName = safeParse(entity.recordManagerConfig)?.name
             if (isStrictSave) entity.recordManagerConfig = null
         } else if (!data.recordManagerName && !data.recordManagerConfig) {
             entity.recordManagerConfig = null
@@ -1172,7 +1173,7 @@ const _insertIntoVectorStoreWorkerThread = async (
         const docs: Document[] = chunks.map((chunk: DocumentStoreFileChunk) => {
             return new Document({
                 pageContent: chunk.pageContent,
-                metadata: JSON.parse(chunk.metadata)
+                metadata: safeParse(chunk.metadata)
             })
         })
         vStoreNodeData.inputs.document = docs
@@ -1278,12 +1279,12 @@ const queryVectorStore = async (data: ICommonObject) => {
             throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Vector Store for ${data.storeId} is not configured`)
         }
 
-        const embeddingConfig = JSON.parse(entity.embeddingConfig)
+        const embeddingConfig = safeParse(entity.embeddingConfig)
         data.embeddingName = embeddingConfig.name
         data.embeddingConfig = embeddingConfig.config
         let embeddingObj = await _createEmbeddingsObject(componentNodes, data, options)
 
-        const vsConfig = JSON.parse(entity.vectorStoreConfig)
+        const vsConfig = safeParse(entity.vectorStoreConfig)
         data.vectorStoreName = vsConfig.name
         data.vectorStoreConfig = vsConfig.config
         if (data.inputs) {
@@ -1506,7 +1507,7 @@ const upsertDocStore = async (
         if (!entity) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
         }
-        const loaders = JSON.parse(entity.loaders)
+        const loaders = safeParse(entity.loaders)
         const loader = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
         if (!loader) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document loader ${docId} not found`)
@@ -1529,16 +1530,16 @@ const upsertDocStore = async (
         }
 
         // Vector Store
-        vectorStoreName = JSON.parse(entity.vectorStoreConfig || '{}')?.name
-        vectorStoreConfig = JSON.parse(entity.vectorStoreConfig || '{}')?.config
+        vectorStoreName = safeParse(entity.vectorStoreConfig || '{}')?.name
+        vectorStoreConfig = safeParse(entity.vectorStoreConfig || '{}')?.config
 
         // Embedding
-        embeddingName = JSON.parse(entity.embeddingConfig || '{}')?.name
-        embeddingConfig = JSON.parse(entity.embeddingConfig || '{}')?.config
+        embeddingName = safeParse(entity.embeddingConfig || '{}')?.name
+        embeddingConfig = safeParse(entity.embeddingConfig || '{}')?.config
 
         // Record Manager
-        recordManagerName = JSON.parse(entity.recordManagerConfig || '{}')?.name
-        recordManagerConfig = JSON.parse(entity.recordManagerConfig || '{}')?.config
+        recordManagerName = safeParse(entity.recordManagerConfig || '{}')?.name
+        recordManagerConfig = safeParse(entity.recordManagerConfig || '{}')?.config
     }
 
     if (createNewDocStore) {
@@ -1787,7 +1788,7 @@ const refreshDocStoreMiddleware = async (storeId: string, data?: IDocumentStoreR
                 throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
             }
 
-            const loaders = JSON.parse(entity.loaders)
+            const loaders = safeParse(entity.loaders)
             totalItems = loaders.map((ldr: IDocumentStoreLoader) => {
                 return {
                     docId: ldr.id
@@ -1896,7 +1897,7 @@ export const findDocStoreAvailableConfigs = async (storeId: string, docId: strin
         throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document store ${storeId} not found`)
     }
 
-    const loaders = JSON.parse(entity.loaders)
+    const loaders = safeParse(entity.loaders)
     const loader = loaders.find((ldr: IDocumentStoreLoader) => ldr.id === docId)
     if (!loader) {
         throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Document loader ${docId} not found`)
@@ -1929,7 +1930,7 @@ export const findDocStoreAvailableConfigs = async (storeId: string, docId: strin
     }
 
     if (entity.vectorStoreConfig) {
-        const vectorStoreName = JSON.parse(entity.vectorStoreConfig || '{}').name
+        const vectorStoreName = safeParse(entity.vectorStoreConfig || '{}').name
         const vectorStoreLabel = appServer.nodesPool.componentNodes[vectorStoreName].label
         const vectorStoreInputs =
             appServer.nodesPool.componentNodes[vectorStoreName].inputs?.filter((input) => INPUT_PARAMS_TYPE.includes(input.type)) ?? []
@@ -1941,7 +1942,7 @@ export const findDocStoreAvailableConfigs = async (storeId: string, docId: strin
     }
 
     if (entity.embeddingConfig) {
-        const embeddingName = JSON.parse(entity.embeddingConfig || '{}').name
+        const embeddingName = safeParse(entity.embeddingConfig || '{}').name
         const embeddingLabel = appServer.nodesPool.componentNodes[embeddingName].label
         const embeddingInputs =
             appServer.nodesPool.componentNodes[embeddingName].inputs?.filter((input) => INPUT_PARAMS_TYPE.includes(input.type)) ?? []
@@ -1953,7 +1954,7 @@ export const findDocStoreAvailableConfigs = async (storeId: string, docId: strin
     }
 
     if (entity.recordManagerConfig) {
-        const recordManagerName = JSON.parse(entity.recordManagerConfig || '{}').name
+        const recordManagerName = safeParse(entity.recordManagerConfig || '{}').name
         const recordManagerLabel = appServer.nodesPool.componentNodes[recordManagerName].label
         const recordManagerInputs =
             appServer.nodesPool.componentNodes[recordManagerName].inputs?.filter((input) => INPUT_PARAMS_TYPE.includes(input.type)) ?? []
