@@ -328,17 +328,30 @@ export const executeFlow = async ({
     // Process form data body with files
     if (files?.length) {
         overrideConfig = { ...incomingInput }
-        for (const file of files) {
+        const isFolder = incomingInput.isFolder === 'true'
+        const filePaths = incomingInput.filePaths || []
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i]
             const fileNames: string[] = []
             const fileBuffer = await getFileFromUpload(file.path ?? file.key)
+
             // Address file name with special characters: https://github.com/expressjs/multer/issues/1104
             file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
-            const storagePath = await addArrayFilesToStorage(file.mimetype, fileBuffer, file.originalname, fileNames, chatflowid)
+
+            // If this is a folder upload and we have relative paths, use them
+            let fileName = file.originalname
+            if (isFolder && filePaths[i]) {
+                fileName = filePaths[i]
+            } else if (file.webkitRelativePath) {
+                // For browsers that support webkitRelativePath
+                fileName = file.webkitRelativePath
+            }
+
+            const storagePath = await addArrayFilesToStorage(file.mimetype, fileBuffer, fileName, fileNames, chatflowid)
 
             const fileInputFieldFromMimeType = mapMimeTypeToInputField(file.mimetype)
-
-            const fileExtension = path.extname(file.originalname)
-
+            const fileExtension = path.extname(fileName)
             const fileInputFieldFromExt = mapExtToInputField(fileExtension)
 
             let fileInputField = 'txtFile'
@@ -365,9 +378,11 @@ export const executeFlow = async ({
 
             await removeSpecificFileFromUpload(file.path ?? file.key)
         }
+
         if (overrideConfig.vars && typeof overrideConfig.vars === 'string') {
             overrideConfig.vars = JSON.parse(overrideConfig.vars)
         }
+
         incomingInput = {
             ...incomingInput,
             overrideConfig,
