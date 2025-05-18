@@ -343,7 +343,7 @@ export const executeFlow = async ({
             let fileName = file.originalname
             if (isFolder && filePaths[i]) {
                 fileName = filePaths[i]
-            } else if (file.webkitRelativePath) {
+            } else if ('webkitRelativePath' in file && typeof file.webkitRelativePath === 'string') {
                 // For browsers that support webkitRelativePath
                 fileName = file.webkitRelativePath
             }
